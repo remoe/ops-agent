@@ -38,6 +38,35 @@ func (m Member) RecordAccessor() string {
 	return s
 }
 
+// logEntryToFluentBit translates a Member from a LogEntry model to a FluentBit model
+func (m Member) logEntryToFluentBit() Member {
+	if len(m) == 1 && m[0] == "severity" {
+		return Member{"logging.googleapis.com/severity"}
+	} else if len(m) > 1 {
+		switch m[0] {
+		case "labels":
+			return prepend("logging.googleapis.com/labels", m[1:])
+		case "operation":
+			return prepend("logging.googleapis.com/operation", m[1:])
+		case "sourceLocation":
+			return prepend("logging.googleapis.com/sourceLocation", m[1:])
+		case "httpRequest":
+			return prepend("logging.googleapis.com/http_request", m[1:])
+		case "jsonPayload":
+			return m[1:]
+		}
+	}
+	// FIXME: handle timestamp? The FB model for timestamp differs in more than just
+	//        the paths: the whole schema is different. The user wouldn't be able
+	//        to filter on it anyway since the FB model for timestamp uses ints only.
+	// FIXME: emit a warning/error -- the path supplied by the user is not valid
+	return m
+}
+
+func prepend(value string, slice []string) []string {
+	return append([]string{value}, slice...)
+}
+
 type Restriction struct {
 	Operator string
 	LHS      Member
@@ -95,7 +124,7 @@ func cond(ctype string, values ...string) string {
 
 func (r Restriction) Components(tag, key string) []fluentbit.Component {
 	c := modify(tag, key)
-	lhs := r.LHS.RecordAccessor()
+	lhs := r.LHS.logEntryToFluentBit().RecordAccessor()
 	rhs := r.RHS
 	switch r.Operator {
 	case "GLOBAL":
