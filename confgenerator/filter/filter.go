@@ -43,9 +43,9 @@ func NewFilter(f string) (*Filter, error) {
 func (f *Filter) Components(tag string, isExclusionFilter bool) []fluentbit.Component {
 	var parity string
 	if isExclusionFilter {
-		parity = "Regex"
-	} else {
 		parity = "Exclude"
+	} else {
+		parity = "Regex"
 	}
 	c := []fluentbit.Component{{
 		Kind: "FILTER",
