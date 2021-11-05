@@ -28,6 +28,17 @@ type Attrib interface{}
 
 type Member []string
 
+var logEntryRootValueMapToFluentBit = map[string]string{
+	"severity": "logging.googleapis.com/severity",
+}
+
+var logEntryRootStructMapToFluentBit = map[string]string{
+	"labels":         "logging.googleapis.com/labels",
+	"operation":      "logging.googleapis.com/operation",
+	"sourceLocation": "logging.googleapis.com/sourceLocation",
+	"httpRequest":    "logging.googleapis.com/http_request",
+}
+
 // RecordAccessor returns a string that can be used as a key in fluentbit config
 func (m Member) RecordAccessor() string {
 	s := `$record`
@@ -40,27 +51,36 @@ func (m Member) RecordAccessor() string {
 
 // logEntryToFluentBit translates a Member from a LogEntry model to a FluentBit model
 func (m Member) logEntryToFluentBit() Member {
-	if len(m) == 1 && m[0] == "severity" {
-		return Member{"logging.googleapis.com/severity"}
+	if len(m) == 1 {
+		if v, ok := logEntryRootValueMapToFluentBit[m[0]]; ok {
+			return Member{v}
+		}
 	} else if len(m) > 1 {
-		switch m[0] {
-		case "labels":
-			return prepend("logging.googleapis.com/labels", m[1:])
-		case "operation":
-			return prepend("logging.googleapis.com/operation", m[1:])
-		case "sourceLocation":
-			return prepend("logging.googleapis.com/sourceLocation", m[1:])
-		case "httpRequest":
-			return prepend("logging.googleapis.com/http_request", m[1:])
-		case "jsonPayload":
+		if v, ok := logEntryRootStructMapToFluentBit[m[0]]; ok {
+			return prepend(v, m[1:])
+		} else if m[0] == "jsonPayload" {
+			// Special case for jsonPayload, where the root "jsonPayload" must be omitted
 			return m[1:]
 		}
 	}
 	// FIXME: handle timestamp? The FB model for timestamp differs in more than just
 	//        the paths: the whole schema is different. The user wouldn't be able
 	//        to filter on it anyway since the FB model for timestamp uses ints only.
-	// FIXME: emit a warning/error -- the path supplied by the user is not valid
-	return m
+	panic(fmt.Errorf("invalid member: %v", m))
+}
+
+// Validate checks whether a given Member is a legal LogEntry path
+func (m Member) Validate() error {
+	if len(m) == 1 {
+		if _, ok := logEntryRootValueMapToFluentBit[m[0]]; ok {
+			return nil
+		}
+	} else if len(m) > 1 {
+		if _, ok := logEntryRootStructMapToFluentBit[m[0]]; ok || m[0] == "jsonPayload" {
+			return nil
+		}
+	}
+	return fmt.Errorf("unrecognized LogEntry path: %v", strings.Join(m, "."))
 }
 
 func prepend(value string, slice []string) []string {
@@ -85,6 +105,10 @@ func NewRestriction(lhs, operator, rhs Attrib) (*Restriction, error) {
 	}
 	switch lhs := lhs.(type) {
 	case Member:
+		err := lhs.Validate()
+		if err != nil {
+			return nil, err
+		}
 		r.LHS = lhs
 	default:
 		return nil, fmt.Errorf("unknown lhs: %v", lhs)
