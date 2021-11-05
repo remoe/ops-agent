@@ -1,0 +1,99 @@
+logging:
+  receivers:
+    sample_logs:
+      type: files
+      include_paths: [/tmp/*.log]
+  processors:
+    simple:
+      type: exclude_logs
+      pattern: jsonPayload.message = bar
+    escaped_regex:
+      type: exclude_logs
+      pattern: 'jsonPayload.message =~ "a\\.b"'
+    regex_leading_spaces:
+      type: exclude_logs
+      pattern: jsonPayload.message =~ " bar "
+    regex_slashes:
+      type: exclude_logs
+      pattern: jsonPayload.message =~ "/bar/"
+    special_severity:
+      type: exclude_logs
+      pattern: severity =~ ERROR
+    special_jsonPayload:
+      type: exclude_logs
+      pattern: jsonPayload.message =~ foo
+    special_httpRequest:
+      type: exclude_logs
+      pattern: httpRequest.method =~ GET
+    nested_spaces:
+      type: exclude_logs
+      pattern: jsonPayload."a b" = foo
+    nested_symbols:
+      type: exclude_logs
+      pattern: jsonPayload."a$b" = foo
+    nested_escaped:
+      type: exclude_logs
+      pattern: 'jsonPayload."a\"b" = foo'
+    nested_unicode:
+      type: exclude_logs
+      pattern: jsonPayload.☃ = foo
+    nested_single_quotes:
+      type: exclude_logs
+      pattern: jsonPayload."a'b" = foo
+    parser:
+      type: exclude_logs
+      pattern: '((jsonPayload.message = foo AND severity =~ "bar") OR NOT jsonPayload.log !~ "baz") jsonPayload.message : frob'
+  service:
+    pipelines:
+      p1:
+        receivers: [sample_logs]
+        processors: [simple]
+        exporters: [google]
+      p2:
+        receivers: [sample_logs]
+        processors: [escaped_regex]
+        exporters: [google]
+      p3:
+        receivers: [sample_logs]
+        processors: [regex_leading_spaces]
+        exporters: [google]
+      p4:
+        receivers: [sample_logs]
+        processors: [regex_slashes]
+        exporters: [google]
+      p5:
+        receivers: [sample_logs]
+        processors: [special_severity]
+        exporters: [google]
+      p6:
+        receivers: [sample_logs]
+        processors: [special_jsonPayload]
+        exporters: [google]
+      p7:
+        receivers: [sample_logs]
+        processors: [special_httpRequest]
+        exporters: [google]
+      p8:
+        receivers: [sample_logs]
+        processors: [nested_spaces]
+        exporters: [google]
+      p9:
+        receivers: [sample_logs]
+        processors: [nested_symbols]
+        exporters: [google]
+      p10:
+        receivers: [sample_logs]
+        processors: [nested_escaped]
+        exporters: [google]
+      p11:
+        receivers: [sample_logs]
+        processors: [nested_unicode]
+        exporters: [google]
+      p12:
+        receivers: [sample_logs]
+        processors: [nested_single_quotes]
+        exporters: [google]
+      p13:
+        receivers: [sample_logs]
+        processors: [parser]
+        exporters: [google]
