@@ -149,7 +149,13 @@ func (l *Logging) generateFluentbitComponents(userAgent string, hostInfo *host.I
 
 				// TODO(ridwanmsharif): Document this.
 				if receiver.Type() == "fluent_forward" {
+					quotedTag := regexp.QuoteMeta(tag)
+
 					tag = tag + ".*"
+					quotedTag = quotedTag + ".*"
+					tags = append(tags, quotedTag)
+				} else {
+					tags = append(tags, regexp.QuoteMeta(tag))
 				}
 
 				for i, pID := range p.ProcessorIDs {
@@ -162,8 +168,9 @@ func (l *Logging) generateFluentbitComponents(userAgent string, hostInfo *host.I
 					}
 					components = append(components, processor.Components(tag, strconv.Itoa(i))...)
 				}
-				components = append(components, setLogNameComponents(tag, rID)...)
-				tags = append(tags, regexp.QuoteMeta(tag))
+				if receiver.Type() != "fluent_forward" {
+					components = append(components, setLogNameComponents(tag, rID)...)
+				}
 				sources = append(sources, fbSource{tag, components})
 			}
 		}
