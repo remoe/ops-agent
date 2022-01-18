@@ -254,7 +254,7 @@ func (r LoggingReceiverFluentForward) Components(tag string) []fluentbit.Compone
 			Config:        map[string]string{
 				"Name":	"lua",
 				"Match": tag + ".*",
-				"script": "log_name.lua",
+				"script": "add_log_name.lua",
 				"call": "add_log_name",
 			},
 		}}
